@@ -1,7 +1,7 @@
 // Offline support for the guest guide. On a boat the signal comes and goes, so:
 // app shell + data are precached, map tiles are cached as they are viewed,
 // and the forecast falls back to the last saved answer.
-const VERSION = 'v10';
+const VERSION = 'v11';
 const SHELL = `shell-${VERSION}`, TILES = 'tiles-v1', API = 'api-v1';
 const PRECACHE = [
   './', 'index.html', 'vodic/', 'vodic/index.html',

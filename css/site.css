@@ -122,6 +122,7 @@ input, textarea, select { font: inherit; font-size: 16px; color: inherit; }
 .story { position: relative; height: 560vh; background: var(--sea-deep); }
 .story__stage { position: sticky; top: 0; height: 100svh; overflow: hidden; contain: strict; }
 .story__sea { position: absolute; inset: 0; background: var(--sea-deep); }
+.story__cove { position: absolute; inset: 0; background: #0a5668; opacity: 0; will-change: opacity; } /* shallow-cove tint, faded in with opacity (no full-screen repaint) */
 .story__sea::after { /* faint depth tint toward open sea */
   content: ""; position: absolute; inset: 0;
   background: radial-gradient(120% 90% at 85% 10%, rgb(28 159 163 / 0.28), transparent 60%);
@@ -140,7 +141,7 @@ input, textarea, select { font: inherit; font-size: 16px; color: inherit; }
 .sea-label {
   position: absolute; left: 0; top: 0;
   font-style: italic; font-stretch: 112%; font-weight: 500; font-size: 0.875rem; letter-spacing: 0.08em;
-  color: rgb(191 231 227 / 0.75); white-space: nowrap; will-change: transform;
+  color: rgb(191 231 227 / 0.75); white-space: nowrap; will-change: transform, opacity; opacity: 0;
 }
 
 .hero {
@@ -151,9 +152,16 @@ input, textarea, select { font: inherit; font-size: 16px; color: inherit; }
   max-width: 44rem;
   will-change: transform, opacity;
 }
+/* Legibility over the white islands on phones: a deep-blue fade behind the hero text. */
+.hero::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  inset: -35svh calc(var(--gutter) * -1) calc(-28px - env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(rgb(6 50 79 / 0), rgb(6 50 79 / 0.82) 38%, rgb(6 50 79 / 0.92));
+}
+@media (min-width: 860px) { .hero::before { display: none; } }
 .hero__title {
   margin: 0;
-  font-stretch: 125%; font-weight: 850;
+  font-stretch: 108%; font-weight: 850;
   font-size: clamp(2.5rem, 1.1rem + 6.2vw, 6rem);
   line-height: 0.98; letter-spacing: -0.035em;
   text-wrap: balance;
@@ -164,16 +172,15 @@ input, textarea, select { font: inherit; font-size: 16px; color: inherit; }
 .hero__hint { display: flex; align-items: center; gap: 0.5rem; margin: 1.5rem 0 0; font-size: 0.875rem; color: #a9c8cf; }
 .hero__hint svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; animation: nudge 1.8s var(--ease-in-out) infinite; }
 @keyframes nudge { 50% { transform: translateY(4px); } }
-@media (min-width: 860px) { .hero { bottom: auto; top: 50%; transform: translateY(-40%); } }
+@media (min-width: 860px) { .hero { bottom: auto; top: 50%; transform: translateY(-40%); } .hero__title { font-stretch: 125%; } }
 
 .chapters { list-style: none; margin: 0; padding: 0; }
 .chapter {
   position: absolute; z-index: 2;
   left: var(--gutter); right: var(--gutter); bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   max-width: 26rem; padding: 1.1rem 1.25rem 1.2rem;
-  background: rgb(6 50 79 / 0.72);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  backdrop-filter: blur(14px) saturate(140%);
+  /* Solid, not backdrop-blurred: a blur over a map that moves every frame costs a full re-blur per frame on phones. */
+  background: rgb(6 50 79 / 0.94);
   border-radius: var(--radius);
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.25), inset 0 1px 0 rgb(255 255 255 / 0.12);
   color: var(--white);
@@ -185,7 +192,7 @@ input, textarea, select { font: inherit; font-size: 16px; color: inherit; }
 .chapter p { margin: 0; color: #d6e4e8; font-size: 1rem; text-wrap: pretty; }
 .chapter strong { color: var(--white); font-variant-numeric: tabular-nums; }
 @media (min-width: 860px) { .chapter { left: auto; right: var(--gutter); bottom: auto; top: 50%; translate: 0 -50%; } }
-@media (prefers-reduced-transparency: reduce) { .chapter { background: var(--sea-deep); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+@media (prefers-reduced-transparency: reduce) { .chapter { background: var(--sea-deep); } }
 
 .story__progress { position: absolute; left: var(--gutter); right: var(--gutter); top: calc(66px + env(safe-area-inset-top, 0px)); height: 2px; background: rgb(255 255 255 / 0.12); border-radius: 2px; overflow: hidden; }
 .story__progress span { display: block; height: 100%; background: var(--signal); transform-origin: 0 50%; transform: scaleX(0); }
@@ -209,7 +216,7 @@ input, textarea, select { font: inherit; font-size: 16px; color: inherit; }
 .boat__specs dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--stone); border-radius: var(--radius); overflow: hidden; }
 .boat__specs dl div { background: var(--white); padding: 1rem 1.1rem; }
 .boat__specs dt { font-size: 0.8125rem; color: var(--ink-2); font-weight: 600; }
-.boat__specs dd { margin: 0.2rem 0 0; font-stretch: 112%; font-weight: 800; font-size: clamp(1.4rem, 1.1rem + 1vw, 2rem); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.boat__specs dd { margin: 0.2rem 0 0; font-stretch: 104%; font-weight: 800; font-size: clamp(1.15rem, 0.95rem + 1vw, 2rem); text-wrap: balance; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .boat__features { list-style: none; padding: 0; margin: 1.25rem 0 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .boat__features li { padding: 0.45rem 0.85rem; border-radius: 999px; background: var(--karst-2); font-weight: 600; font-size: 0.9375rem; }
 @media (min-width: 860px) {
@@ -384,4 +391,11 @@ input, textarea, select { font: inherit; font-size: 16px; color: inherit; }
   .reveal { transition: opacity 300ms ease; }
   .reveal[data-hidden] { transform: none; }
   .hero__hint svg { animation: none; }
+}
+
+/* Narrow screens: the extra-wide display cut reads as stretched on a phone, so pull it back toward normal width. */
+@media (max-width: 600px) {
+  .display { font-stretch: 106%; letter-spacing: -0.02em; }
+  .chapter h2 { font-stretch: 106%; }
+  .close .display { font-stretch: 106%; }
 }

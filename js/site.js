@@ -367,7 +367,7 @@
     const sec = $('#story'); if (!sec) return { stats() {} };
     const stage = $('.story__stage', sec), land = $('.story__land', sec), svg = $('.story__route', sec);
     const line = $('.story__line', svg), wake = $('.story__wake', svg), boat = $('.story__boat', svg), pins = $('.story__pins', svg);
-    const hero = $('.hero', sec), chapters = $$('.chapter', sec), bar = $('.story__progress span', sec), sea = $('.story__sea', sec);
+    const hero = $('.hero', sec), chapters = $$('.chapter', sec), bar = $('.story__progress span', sec), cove = $('.story__cove', sec);
     const labels = $$('.sea-label', sec);
     // Image geometry: hero-land.png covers 43.74–44.02 N, 15.10–15.52 E (10 m cells, 2× downsampled).
     const IMG = { w: 1685, h: 1558, west: 15.10, north: 44.02, dx: 2.49248e-4, dy: 1.79662e-4 };
@@ -409,11 +409,12 @@
     ];
     const WIN = [[0.20, 0.33], [0.38, 0.49], [0.58, 0.69], [0.76, 0.87], [0.93, 1.2]];
 
-    let vw = 0, vh = 0, focus = null, cams = {}, isStatic = false;
+    let vw = 0, vh = 0, focus = null, cams = {}, isStatic = false, labelW = [];
     function layout() {
       isStatic = reduceMotion.matches;
       sec.toggleAttribute('data-static', isStatic);
       vw = stage.clientWidth; vh = stage.clientHeight;
+      labelW = labels.map((l) => l.offsetWidth);
       const wide = vw >= 860;
       // Where the camera may place things: away from the chapter card.
       focus = wide ? { x: 0, y: 70, w: vw - Math.min(480, vw * 0.4), h: vh - 90 } : { x: 0, y: 80, w: vw, h: vh * 0.56 - 80 };
@@ -480,9 +481,15 @@
       boat.setAttribute('transform', `translate(${head[0].toFixed(1)} ${head[1].toFixed(1)}) rotate(${(ang * 180 / Math.PI + 90).toFixed(1)}) scale(${(1.25 / c.s).toFixed(4)})`);
       boat.style.opacity = c.r > 0.0005 && c.r < 0.9995 ? 1 : 0;
       pinEls.forEach((el, i) => { el.setAttribute('r', (5.5 / c.s).toFixed(2)); el.style.opacity = c.r + 1e-4 >= stopFrac[i] ? 1 : 0.35; });
-      labels.forEach((l, i) => { l.style.transform = `translate3d(${(labelPos[i][0] * c.s + tx).toFixed(1)}px, ${(labelPos[i][1] * c.s + ty).toFixed(1)}px, 0)`; });
+      const h = isStatic ? 1 : clamp01((p - 0.025) / 0.07);
+      // Sea names stay out of the way of the headline, and only show when they fit fully on screen.
+      labels.forEach((l, i) => {
+        const x = labelPos[i][0] * c.s + tx, y = labelPos[i][1] * c.s + ty;
+        const fits = x > 8 && x + labelW[i] < vw - 8 && y > 90 && y < vh - 40;
+        l.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+        l.style.opacity = fits ? h : 0;
+      });
       if (isStatic) { hero.style.opacity = ''; land.style.opacity = 0.35; return; }
-      const h = clamp01((p - 0.025) / 0.07);
       // Islands sit quietly under the headline, then come up to full white as the trip starts.
       land.style.opacity = (0.3 + 0.7 * clamp01((p - 0.04) / 0.12)).toFixed(3);
       hero.style.opacity = 1 - h;
@@ -496,13 +503,18 @@
         ch.style.transform = `translate3d(0, ${((1 - k) * 18).toFixed(1)}px, 0)`;
       });
       bar.style.transform = `scaleX(${p.toFixed(4)})`;
-      // Shallow-cove tint as the boat reaches Lojena.
-      const cove = clamp01(1 - Math.abs(p - 0.81) / 0.12);
-      sea.style.backgroundColor = `rgb(${Math.round(lerp(6, 10, cove))} ${Math.round(lerp(50, 86, cove))} ${Math.round(lerp(79, 104, cove))})`;
+      // Shallow-cove tint as the boat reaches Lojena (opacity of an overlay, not a repainted background).
+      cove.style.opacity = (0.6 * clamp01(1 - Math.abs(p - 0.81) / 0.12)).toFixed(3);
     }
     let ticking = false;
     addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; frame(); }); } }, { passive: true });
-    addEventListener('resize', () => requestAnimationFrame(layout));
+    // Phones resize the viewport when the address bar slides in or out while scrolling; re-fitting the camera then
+    // makes the map jump, so only react to real size changes (rotation, window resize).
+    let lastW = innerWidth, lastH = innerHeight;
+    addEventListener('resize', () => {
+      if (innerWidth === lastW && Math.abs(innerHeight - lastH) < 160) return;
+      lastW = innerWidth; lastH = innerHeight; requestAnimationFrame(layout);
+    });
     reduceMotion.addEventListener?.('change', layout);
     (land.complete ? Promise.resolve() : land.decode().catch(() => {})).then(layout);
     layout();
@@ -520,7 +532,8 @@
 
   /* ---------------- Boat drift ---------------- */
   (() => {
-    const body = $('.boat__body'), sec = $('#brod'); if (!body || reduceMotion.matches) return;
+    // Skipped on touch screens: transforming an SVG group repaints the whole drawing on every scroll frame.
+    const body = $('.boat__body'), sec = $('#brod'); if (!body || reduceMotion.matches || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     let ticking = false;
     const run = () => {
       ticking = false;
