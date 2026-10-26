@@ -410,9 +410,57 @@
     const WIN = [[0.20, 0.33], [0.38, 0.49], [0.58, 0.69], [0.76, 0.87], [0.93, 1.2]];
 
     let vw = 0, vh = 0, focus = null, cams = {}, isStatic = false, labelW = [];
+    // Phones: scroll runs off the main thread, so a map scrubbed from scroll events always trails the finger.
+    // There the story moves in steps: crossing into a chapter starts one GPU transition, and nothing runs per frame.
+    let steps = false, world = null, stepLine = null, stepPins = [], curStep = -1;
+    const STEPS = [
+      { until: 0.06, cam: 'overview', r: 0 },
+      { until: 0.33, cam: 'biograd', r: 0 },
+      { until: 0.52, cam: 'leg1', r: stopFrac[1] },
+      { until: 0.72, cam: 'leg2', r: stopFrac[2] },
+      { until: 0.89, cam: 'leg3', r: stopFrac[3] },
+      { until: 2, cam: 'all', r: 1 },
+    ];
+    function buildWorld() {
+      if (world) return;
+      const ns = 'http://www.w3.org/2000/svg';
+      world = document.createElement('div');
+      world.className = 'story__world';
+      land.before(world);
+      world.append(land);
+      const s = document.createElementNS(ns, 'svg');
+      s.setAttribute('class', 'story__routeW'); s.setAttribute('viewBox', `0 0 ${IMG.w} ${IMG.h}`);
+      s.setAttribute('width', IMG.w); s.setAttribute('height', IMG.h); s.setAttribute('aria-hidden', 'true');
+      const d = 'M' + pts.map((p) => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L');
+      s.innerHTML = `<path class="story__wakeW" d="${d}"/><path class="story__lineW" d="${d}" pathLength="1"/>` +
+        stopIdx.slice(0, -1).map((i) => `<circle class="story__pinW" cx="${pts[i][0]}" cy="${pts[i][1]}" r="6"/>`).join('');
+      world.append(s);
+      stepLine = s.querySelector('.story__lineW');
+      stepPins = [...s.querySelectorAll('.story__pinW')];
+    }
+    function stepFrame(force) {
+      const p = progress();
+      bar.style.transform = `scaleX(${p.toFixed(4)})`;
+      let i = 0; while (p > STEPS[i].until) i++;
+      if (i === curStep && !force) return;
+      curStep = i;
+      const st = STEPS[i], c = cams[st.cam];
+      world.style.transform = `translate3d(${(c.fx - c.cx * c.s).toFixed(1)}px, ${(c.fy - c.cy * c.s).toFixed(1)}px, 0) scale(${c.s.toFixed(4)})`;
+      // Line and pins keep a steady on-screen size whatever the zoom.
+      stepLine.style.strokeWidth = (3.5 / c.s).toFixed(2);
+      stepLine.style.strokeDashoffset = String(1 - st.r);
+      stepPins.forEach((el, k) => { el.setAttribute('r', (5.5 / c.s).toFixed(2)); el.style.strokeWidth = (2.5 / c.s).toFixed(2); el.classList.toggle('is-on', st.r + 1e-4 >= stopFrac[k]); });
+      sec.toggleAttribute('data-past-hero', i > 0);
+      sec.toggleAttribute('data-cove', i === 4);
+      chapters.forEach((ch, k) => ch.classList.toggle('is-on', k === i - 1));
+    }
+
     function layout() {
       isStatic = reduceMotion.matches;
       sec.toggleAttribute('data-static', isStatic);
+      steps = !isStatic && (matchMedia('(pointer: coarse)').matches || stage.clientWidth < 860);
+      sec.toggleAttribute('data-steps', steps);
+      if (steps) buildWorld(); else if (world) world.style.transform = '';
       vw = stage.clientWidth; vh = stage.clientHeight;
       labelW = labels.map((l) => l.offsetWidth);
       const wide = vw >= 860;
@@ -429,6 +477,12 @@
         biograd: fit(CAM.biograd, 0.05), leg1: fit(CAM.leg1), leg2: fit(CAM.leg2), leg3: fit(CAM.leg3), all: fit(CAM.all, 0.08),
       };
       if (isStatic) { cams.overview = cams.all; }
+      if (steps) {
+        // Jump to the right place without animating (first paint, rotation), then let later steps transition.
+        world.style.transition = 'none'; stepFrame(true);
+        world.getBoundingClientRect(); world.style.transition = '';
+        return;
+      }
       last = -1; frame();
     }
     const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -469,6 +523,7 @@
       return clamp01(-r.top / (r.height - vh));
     }
     function frame() {
+      if (steps) return stepFrame(false);
       const p = progress();
       if (Math.abs(p - last) < 1e-4) return;
       last = p;
