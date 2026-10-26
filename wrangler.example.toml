@@ -15,7 +15,7 @@ binding = "PHOTOS"
 bucket_name = "jukic-charter-photos"
 
 [vars]
-SITE_URL = "https://jukic-charter.pages.dev"
+SITE_URL = "https://jukic-charter-novi.pages.dev"
 
 # Secrets (never in this file). Set with `wrangler pages secret put NAME` or in the dashboard:
 #   STRIPE_SECRET_KEY      sk_live_... (sk_test_... while testing)

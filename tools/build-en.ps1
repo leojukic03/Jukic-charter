@@ -11,7 +11,7 @@ $h = [regex]::Replace($h, '<meta name="description" content=".*?">', '<meta name
 $h = [regex]::Replace($h, '<meta property="og:title" content=".*?">', '<meta property="og:title" content="Jukić Charter: your own boat for the Kornati, three days or a whole week">')
 $h = [regex]::Replace($h, '<meta property="og:description" content=".*?">', '<meta property="og:description" content="Bareboat rental from 3 days, with a guide to coves, routes and the wind forecast.">')
 $h = $h.Replace('<meta property="og:locale" content="hr_HR">', '<meta property="og:locale" content="en_GB">')
-$h = $h.Replace('<link rel="canonical" href="https://jukic-charter.pages.dev/">', '<link rel="canonical" href="https://jukic-charter.pages.dev/en/">')
+$h = $h.Replace('<link rel="canonical" href="https://jukic-charter-novi.pages.dev/">', '<link rel="canonical" href="https://jukic-charter-novi.pages.dev/en/">')
 # Bake English text into elements with data-i18n, so crawlers see English without running JS.
 $i18n = [IO.File]::ReadAllText((Join-Path $root 'js\site-i18n.js'), $utf8)
 $en = @{}
