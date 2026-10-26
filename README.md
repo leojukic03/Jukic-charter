@@ -14,7 +14,7 @@ Statična stranica, bez build koraka. Radi na bilo kojem hostingu s HTTPS-om (Cl
 | `functions/api/`, `server/`, `shared/` | Online rezervacija: Cloudflare Pages Functions + D1 + Stripe |
 | `admin/` | Pregled rezervacija i zatvaranje termina za vlasnika |
 | `uvjeti/` | Uvjeti najma (nacrt, upiši svoja pravila) |
-| `schema.sql`, `wrangler.toml`, `_headers` | Baza i postavke za Cloudflare |
+| `schema.sql`, `wrangler.example.toml`, `_headers`, `tools/build-dist.sh` | Baza, postavke i build za Cloudflare Pages |
 | `data/pois-all.json` | ~8.600 mjesta s cijelog Jadrana iz OpenStreetMapa (sloj „Sve”) |
 | `data/mask-*.png` | Karte kopno/more za rutiranje (40 m oko Biograda–Kornata, 400 m za cijeli Jadran) |
 | `sw.js`, `manifest.webmanifest` | Rad bez signala i instalacija na početni zaslon |
@@ -43,7 +43,7 @@ Ako Mac javi da nema `python3`, pokreni `xcode-select --install` i pokušaj pono
 Ništa od ovoga nisam mogao znati, pa su u kodu primjeri označeni s `PROVJERI`:
 
 1. **`js/config.js`**: ime firme, telefon, WhatsApp, e-mail, adresa veza, podaci o brodu (broj osoba, duljina, motor, spremnik, oprema), cijena goriva i **tablica potrošnje** (`speeds`, procjena za 200 KS izvanbrodski motor).
-2. **Domena `https://www.example.com/`** u `index.html` (canonical, hreflang, og:image, JSON-LD), `sitemap.xml`, `robots.txt`. Nakon izmjene `index.html` pokreni `tools/build-en.ps1`.
+2. **Domena:** stranica je postavljena na `https://jukic-charter.pages.dev/`. Ako kupiš vlastitu domenu, zamijeni je u `index.html` (canonical, hreflang, og:image, JSON-LD), `sitemap.xml`, `robots.txt`. Nakon izmjene `index.html` pokreni `tools/build-en.ps1`.
 3. **Odgovori u „Pitanjima”** opisuju pravila koja moraš potvrditi: gorivo „pun–pun”, dječji prsluci na brodu, ponašanje kod lošeg vremena.
 4. **Fotografije i podaci o brodu** dodaješ u `/admin/` (vidi „Fotografije i podaci o brodu” niže). Dok nema fotografija, stranica prikazuje ilustraciju.
 5. **Recenzije gostiju**: nisam izmišljao recenzije. Kad ih imaš (Google, Booking, Airbnb), dodaj nekoliko pravih uz cijene.
@@ -70,7 +70,7 @@ Bez postavljenog servera (npr. lokalno) stranica sama prelazi na stari način: z
 
 Treba: račun na Cloudflareu (besplatni plan je dovoljan) i Stripe račun firme.
 
-1. **Kod na GitHub** (privatni repozitorij), pa u Cloudflare → Workers & Pages → Create → Pages → poveži repozitorij. Build command: prazno. Output directory: `/`. Cloudflare sam prepozna mapu `functions/`.
+1. **Objava s GitHuba:** Cloudflare → Workers & Pages → Create → Pages → Connect to Git → odaberi `leojukic03/Jukic-charter`. Project name: `jukic-charter` (adresa postaje `jukic-charter.pages.dev`), Production branch: `main`, Framework preset: None, **Build command: `bash tools/build-dist.sh`**, **Build output directory: `dist`**. Cloudflare sam prepozna mapu `functions/`. Svaki `git push` na `main` sam objavi novu verziju. Bez koraka 2–4 stranica i vodič već rade, a rezervacija šalje zahtjev na WhatsApp.
 2. **Baza i fotografije:** Cloudflare → Storage & Databases → D1 → Create `charter`. U konzoli baze zalijepi i pokreni sadržaj `schema.sql`. Zatim R2 → Create bucket `jukic-charter-photos`. U Pages projektu → Settings → Bindings dodaj D1 (`DB` → `charter`) i R2 (`PHOTOS` → `jukic-charter-photos`).
 3. **Stripe:** Developers → API keys → kopiraj *Secret key*. Developers → Webhooks → Add endpoint `https://tvoja-domena/api/stripe-webhook`, događaji: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`; kopiraj *Signing secret*. U Settings → Emails uključi slanje računa za uspješna plaćanja.
 4. **Varijable** u Pages → Settings → Variables and secrets (kao *Secret*):
@@ -79,7 +79,7 @@ Treba: račun na Cloudflareu (besplatni plan je dovoljan) i Stripe račun firme.
    Za e-mail potvrde (neobavezno): `RESEND_API_KEY`, `MAIL_FROM`, `NOTIFY_EMAIL`.
 5. **Prvo testiraj u Stripe test načinu** (`sk_test_…` i test webhook): plati karticom `4242 4242 4242 4242`, provjeri da se dan prekriži u kalendaru i pojavi u `/admin/`. Tek onda zamijeni ključeve live ključevima.
 
-Ako radije koristiš naredbeni redak: `wrangler d1 create charter`, `wrangler d1 execute charter --remote --file=schema.sql`, `wrangler pages secret put STRIPE_SECRET_KEY` itd. (`wrangler.toml` je pripremljen).
+Veze (D1, R2) i varijable postavljaš u Cloudflare nadzornoj ploči. Ako radije koristiš naredbeni redak (Wrangler), preimenuj `wrangler.example.toml` u `wrangler.toml` i upiši ID baze; tada te postavke vrijede iz datoteke, a ne iz nadzorne ploče.
 
 ### Testovi
 

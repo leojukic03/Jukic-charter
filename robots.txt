@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /tools/
 
-Sitemap: https://www.example.com/sitemap.xml
+Sitemap: https://jukic-charter.pages.dev/sitemap.xml

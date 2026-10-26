@@ -1,6 +1,8 @@
+# Example for deploying with the Wrangler CLI (rename to wrangler.toml). With Git deployment from the Cloudflare
+# dashboard keep this file renamed, so bindings and variables are managed in the dashboard (see README).
 # Cloudflare Pages project: static site from this folder + Functions in /functions + D1 database.
 name = "charter"
-pages_build_output_dir = "."
+pages_build_output_dir = "dist"
 compatibility_date = "2024-09-23"
 
 [[d1_databases]]
@@ -13,7 +15,7 @@ binding = "PHOTOS"
 bucket_name = "jukic-charter-photos"
 
 [vars]
-SITE_URL = "https://www.example.com"
+SITE_URL = "https://jukic-charter.pages.dev"
 
 # Secrets (never in this file). Set with `wrangler pages secret put NAME` or in the dashboard:
 #   STRIPE_SECRET_KEY      sk_live_... (sk_test_... while testing)

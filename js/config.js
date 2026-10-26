@@ -5,7 +5,7 @@ window.CHARTER = {
     phone: '+385 91 000 0000',        // PROVJERI
     whatsapp: '385910000000',         // PROVJERI: broj bez + i razmaka
     email: 'info@example.com',        // PROVJERI
-    siteUrl: 'https://www.example.com', // PROVJERI: za SEO i dijeljenje
+    siteUrl: 'https://jukic-charter.pages.dev', // PROVJERI: za SEO i dijeljenje
     address: 'Marina Kornati, Biograd na Moru', // PROVJERI: točan vez
   },
 
