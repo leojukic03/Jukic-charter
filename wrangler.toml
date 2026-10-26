@@ -1,0 +1,26 @@
+# Cloudflare Pages project: static site from this folder + Functions in /functions + D1 database.
+name = "charter"
+pages_build_output_dir = "."
+compatibility_date = "2024-09-23"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "charter"
+database_id = "UPIŠI-ID-IZ-wrangler-d1-create"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "jukic-charter-photos"
+
+[vars]
+SITE_URL = "https://www.example.com"
+
+# Secrets (never in this file). Set with `wrangler pages secret put NAME` or in the dashboard:
+#   STRIPE_SECRET_KEY      sk_live_... (sk_test_... while testing)
+#   STRIPE_WEBHOOK_SECRET  whsec_...
+#   ADMIN_TOKEN            long random string for /admin/
+#   ICAL_TOKEN             another long random string for the calendar feed
+# Fiscalized invoices via Solo (see README → Računi):
+#   SOLO_TOKEN, SOLO_TIP_RACUNA (advance invoice type id), optional SOLO_TIP_USLUGE, SOLO_TIP_RACUNA_FULL
+# Optional e-mail via Resend:
+#   RESEND_API_KEY, MAIL_FROM ("Jukić Charter <rezervacije@tvoja-domena.hr>"), NOTIFY_EMAIL (owner)

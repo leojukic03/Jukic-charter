@@ -1,0 +1,292 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Booking API tests</title>
+<style>body{font:14px/1.5 system-ui;margin:20px} .ok{color:#0a7a3e} .bad{color:#c9361f;font-weight:700} pre{white-space:pre-wrap}</style>
+<h1>Booking API tests</h1>
+<p>Runs the real Pages Functions against SQLite (sql.js, same engine as D1) with Stripe and e-mail mocked. Open via the local server.</p>
+<pre id="out">running…</pre>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script type="module">
+// Dev tool. Not deployed logic; safe to delete.
+const out = document.getElementById('out');
+const results = [];
+const log = (ok, name, extra = '') => { results.push({ ok, name, extra }); };
+
+// --- D1 shim over sql.js ---
+const SQL = await initSqlJs({ locateFile: (f) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}` });
+const sqlite = new SQL.Database();
+sqlite.run(await (await fetch('../schema.sql')).text());
+const DB = {
+  prepare(sql) {
+    let args = [];
+    const stmt = {
+      bind(...a) { args = a; return stmt; },
+      async all() { const st = sqlite.prepare(sql); st.bind(args); const rows = []; while (st.step()) rows.push(st.getAsObject()); st.free(); return { results: rows }; },
+      async first() { return (await stmt.all()).results[0] ?? null; },
+      async run() { sqlite.run(sql, args); return { meta: { changes: sqlite.getRowsModified() } }; },
+    };
+    return stmt;
+  },
+};
+
+// --- Stripe / Resend mocks ---
+const stripeCalls = []; const resendCalls = []; const soloCalls = []; let soloFail = false; let sessionN = 0; let failStripe = false;
+const realFetch = window.fetch.bind(window);
+window.fetch = async (url, opts = {}) => {
+  const u = String(url);
+  if (u.startsWith('https://api.stripe.com/')) {
+    stripeCalls.push({ url: u, body: opts.body ? new URLSearchParams(opts.body) : null });
+    if (failStripe) return new Response(JSON.stringify({ error: { message: 'boom' } }), { status: 500 });
+    if (u.endsWith('/expire')) return new Response(JSON.stringify({ status: 'expired' }), { status: 200 });
+    sessionN++;
+    return new Response(JSON.stringify({ id: `cs_test_${sessionN}`, url: `https://checkout.stripe.com/c/pay/cs_test_${sessionN}` }), { status: 200 });
+  }
+  if (u.startsWith('https://api.resend.com/')) { resendCalls.push(JSON.parse(opts.body)); return new Response('{}', { status: 200 }); }
+  if (u.startsWith('https://api.solo.com.hr/')) {
+    const p = Object.fromEntries(new URLSearchParams(opts.body));
+    soloCalls.push(p);
+    if (soloFail) return new Response(JSON.stringify({ status: 125, message: 'Fiskalizacija nije uspjela.' }), { status: 200 });
+    const n = soloCalls.length;
+    return new Response(JSON.stringify({ status: 0, racun: { id: 'r' + n, broj_racuna: `${n}-1-1`, pdf: `https://solo.com.hr/download/r${n}` }, message: 'Račun uspješno kreiran.' }), { status: 200 });
+  }
+  return realFetch(url, opts);
+};
+
+const env = {
+  DB, STRIPE_SECRET_KEY: 'sk_test_dummy', STRIPE_WEBHOOK_SECRET: 'whsec_dummy', ADMIN_TOKEN: 'a'.repeat(32), ICAL_TOKEN: 'b'.repeat(32),
+  RESEND_API_KEY: 're_test', MAIL_FROM: 'Test <t@example.com>', NOTIFY_EMAIL: 'owner@example.com',
+  SOLO_TOKEN: 'solo_test', SOLO_TIP_RACUNA: '4', SOLO_TIP_USLUGE: '1',
+  PHOTOS: (() => { const m = new Map(); return { m, async put(k, v, o) { m.set(k, { v, o }); }, async get(k) { const x = m.get(k); return x ? { body: x.v, httpMetadata: x.o.httpMetadata } : null; }, async delete(k) { m.delete(k); } }; })(),
+  SITE_URL: 'https://www.example.com', ASSETS: { fetch: (u) => realFetch(new URL(new URL(u).pathname, location.origin)) },
+};
+const pending = [];
+const flush = () => Promise.all(pending.splice(0));
+const ctx = (method, path, { body, headers = {}, raw } = {}) => ({
+  env, waitUntil: (p) => pending.push(p),
+  request: new Request('https://www.example.com' + path, { method, headers: { 'Content-Type': 'application/json', ...headers }, body: raw ?? (body ? JSON.stringify(body) : undefined) }),
+});
+const J = async (res) => ({ status: res.status, body: await res.clone().json().catch(async () => res.text()) });
+
+const availability = await import('../functions/api/availability.js');
+const checkout = await import('../functions/api/checkout.js');
+const webhook = await import('../functions/api/stripe-webhook.js');
+const booking = await import('../functions/api/booking.js');
+const release = await import('../functions/api/release.js');
+const adminB = await import('../functions/api/admin/bookings.js');
+const adminK = await import('../functions/api/admin/blocks.js');
+const ics = await import('../functions/api/calendar.ics.js');
+const rulesMod = await import('../shared/booking-rules.js');
+const boatApi = await import('../functions/api/boat.js');
+const photoFile = await import('../functions/api/photos/[name].js');
+const adminP = await import('../functions/api/admin/photos.js');
+const adminBoat = await import('../functions/api/admin/boat.js');
+const invoiceMod = await import('../server/invoice.js');
+const { signForTest } = await import('../server/stripe.js');
+
+let ip = 1;
+const book = (b, sameIp) => checkout.onRequestPost(ctx('POST', '/api/checkout', { body: { guests: 4, license: true, name: 'Ana Horvat', email: 'ana@example.com', lang: 'hr', ...b }, headers: { 'CF-Connecting-IP': sameIp || `10.0.0.${ip++}` } }));
+const avail = async () => (await J(await availability.onRequestGet(ctx('GET', '/api/availability')))).body;
+const signed = async (payload) => ctx('POST', '/api/stripe-webhook', { raw: payload, headers: { 'Stripe-Signature': await signForTest(payload, env.STRIPE_WEBHOOK_SECRET) } });
+
+try {
+  const rules = await (await realFetch('../data/booking.json')).json();
+
+  // 1. empty calendar
+  let a = await avail();
+  log(a.booked.length === 0 && a.minDays === 3, 'availability starts empty, min 3 days', JSON.stringify(a).slice(0, 120));
+
+  // 2. a week in peak season: weekly rate + cleaning, 30 % advance charged
+  let r = await J(await book({ date: '2027-07-10', days: 7 }));
+  const sc = stripeCalls.at(-1).body;
+  log(r.status === 200 && r.body.url.includes('cs_test_1'), 'checkout returns Stripe URL', JSON.stringify(r.body));
+  log(sc.get('line_items[0][price_data][unit_amount]') === '70200', 'week in peak: 2250 + 90 cleaning = 2340 €, advance 702 €', sc.get('line_items[0][price_data][unit_amount]'));
+  log(sc.get('custom_text[submit][message]').includes('1.638') && sc.get('custom_text[submit][message]').includes('bez skipera'), 'Stripe page states 1.638 € at pick-up and bareboat', sc.get('custom_text[submit][message]'));
+  log(sc.get('line_items[0][price_data][product_data][description]').includes('09:00') && sc.get('line_items[0][price_data][product_data][description]').includes('19:00'), 'pick-up and return times on Stripe page');
+  log(Number(sc.get('expires_at')) - Date.now() / 1000 >= 29 * 60, 'Stripe session lives ≥ 30 min');
+  const id1 = r.body.id;
+  a = await avail();
+  log(['2027-07-10', '2027-07-13', '2027-07-16'].every((d) => a.booked.includes(d)) && !a.booked.includes('2027-07-17') && !a.booked.includes('2027-07-09'), 'all 7 days held, neighbours free');
+
+  // 3. overlaps and neighbours
+  r = await J(await book({ date: '2027-07-14', days: 3 }));
+  log(r.status === 409, 'overlapping the end → 409', r.status);
+  r = await J(await book({ date: '2027-07-07', days: 4 }));
+  log(r.status === 409, 'overlapping the start → 409', r.status);
+  r = await J(await book({ date: '2027-07-05', days: 20 }));
+  log(r.status === 409, 'range covering the whole booking → 409', r.status);
+  r = await J(await book({ date: '2027-07-17', days: 3 }));
+  log(r.status === 200, 'starting the day after the return → OK', r.status);
+
+  // 4. across a season boundary: 3 mid days + 2 peak days
+  r = await J(await book({ date: '2027-06-28', days: 5 }));
+  log(r.status === 200 && stripeCalls.at(-1).body.get('line_items[0][price_data][unit_amount]') === '47700', 'mixed seasons: 3×260 + 2×360 + 90 = 1590 €, advance 477 €', stripeCalls.at(-1).body.get('line_items[0][price_data][unit_amount]'));
+
+  // 5. validation
+  const v = async (b, field, name) => { const x = await J(await book(b)); log(x.status === 422 && x.body.fields.includes(field), name, JSON.stringify(x.body)); };
+  await v({ date: '2027-08-01', days: 2 }, 'days', 'two days → 422 days');
+  await v({ date: '2027-08-01', days: 22 }, 'days', 'more than 21 days → 422 days');
+  await v({ date: '2027-08-01', days: 7, license: false }, 'license', 'no licence → 422 (bareboat only)');
+  await v({ date: '2026-01-10', days: 3 }, 'date', 'past date → 422');
+  await v({ date: '2027-01-10', days: 3 }, 'season', 'off season → 422');
+  await v({ date: '2027-10-29', days: 5 }, 'season', 'running past the end of the season → 422');
+  await v({ date: '2027-08-01', days: 7, guests: 9 }, 'guests', 'too many guests → 422');
+  await v({ date: '2027-08-01', days: 7, email: 'nope' }, 'email', 'bad email → 422');
+
+  // 6. one visitor cannot hold the whole calendar
+  for (const d of ['2027-08-01', '2027-08-05', '2027-08-09']) await book({ date: d, days: 3 }, '192.168.1.9');
+  r = await J(await book({ date: '2027-08-13', days: 3 }, '192.168.1.9'));
+  log(r.status === 429, 'fourth open hold from one visitor → 429', r.status);
+
+  // 7. Stripe failure releases the hold
+  failStripe = true;
+  r = await J(await book({ date: '2027-08-20', days: 3 }));
+  failStripe = false;
+  a = await avail();
+  log(r.status === 502 && !a.booked.includes('2027-08-20'), 'Stripe error → 502 and days freed');
+
+  // 8. webhook
+  const ev = (type, id, extra = {}) => JSON.stringify({ type, data: { object: { id: 'cs_test_1', client_reference_id: id, payment_status: 'paid', payment_intent: 'pi_123', ...extra } } });
+  let payload = ev('checkout.session.completed', id1);
+  r = await webhook.onRequestPost(ctx('POST', '/api/stripe-webhook', { raw: payload, headers: { 'Stripe-Signature': 't=1,v1=deadbeef' } }));
+  log(r.status === 400, 'webhook with bad signature → 400');
+  r = await webhook.onRequestPost(await signed(payload));
+  await flush();
+  const row = sqlite.exec(`SELECT status, stripe_payment FROM bookings WHERE id = '${id1}'`)[0].values[0];
+  log(r.status === 200 && row[0] === 'confirmed' && row[1] === 'pi_123', 'paid webhook → confirmed', row.join());
+  r = await webhook.onRequestPost(await signed(payload));
+  log(r.status === 200 && resendCalls.length === 2, 'duplicate webhook is harmless (e-mails sent once)', resendCalls.length);
+  log(resendCalls[0].html.includes('1.638') && resendCalls[0].html.includes('4 osobe') && resendCalls[0].html.includes('7 dana') && resendCalls[1].html.includes('naplatiti pri preuzimanju'), 'guest + owner e-mail with dates, rest due, plurals', resendCalls.map((c) => c.subject).join(' / '));
+  const oldSig = await signForTest(payload, env.STRIPE_WEBHOOK_SECRET, Math.floor(Date.now() / 1000) - 3600);
+  r = await webhook.onRequestPost(ctx('POST', '/api/stripe-webhook', { raw: payload, headers: { 'Stripe-Signature': oldSig } }));
+  log(r.status === 400, 'replayed old webhook → 400');
+
+  // 9. thank-you lookup
+  r = await J(await booking.onRequestGet(ctx('GET', '/api/booking?session_id=cs_test_1')));
+  log(r.body.status === 'confirmed' && r.body.days === 7 && r.body.end_date === '2027-07-16' && r.body.paid_cents === 70200 && r.body.total_cents === 234000 && !('email' in r.body), 'booking status by session, no personal data', JSON.stringify(r.body));
+
+  // 10. guest cancels at Stripe → release frees the days
+  r = await J(await book({ date: '2027-09-10', days: 4 }));
+  const id2 = r.body.id;
+  r = await J(await release.onRequestPost(ctx('POST', '/api/release', { body: { id: id2 } })));
+  a = await avail();
+  log(r.body.status === 'expired' && !a.booked.includes('2027-09-11') && stripeCalls.at(-1).url.endsWith('/expire'), 'release expires session and frees days');
+  r = await J(await release.onRequestPost(ctx('POST', '/api/release', { body: { id: id1 } })));
+  log(r.body.status === 'confirmed', 'release cannot touch a paid booking');
+
+  // 11. lapsed hold stops blocking; expired event
+  r = await J(await book({ date: '2027-09-20', days: 3 }));
+  sqlite.run(`UPDATE bookings SET expires_at = '2000-01-01T00:00:00.000Z' WHERE id = ?`, [r.body.id]);
+  a = await avail();
+  log(!a.booked.includes('2027-09-21'), 'expired hold no longer blocks');
+  r = await J(await book({ date: '2027-09-20', days: 3 }));
+  log(r.status === 200, 'days can be booked again after hold lapses', r.status);
+  payload = JSON.stringify({ type: 'checkout.session.expired', data: { object: { id: 'cs_x', client_reference_id: r.body.id } } });
+  await webhook.onRequestPost(await signed(payload));
+  a = await avail();
+  log(!a.booked.includes('2027-09-21'), 'checkout.session.expired frees days');
+
+  // 12. admin
+  const auth = { Authorization: 'Bearer ' + env.ADMIN_TOKEN };
+  r = await adminB.onRequestGet(ctx('GET', '/api/admin/bookings', { headers: { Authorization: 'Bearer wrong' } }));
+  log(r.status === 401, 'admin without token → 401');
+  r = await J(await adminK.onRequestPost(ctx('POST', '/api/admin/blocks', { body: { from: '2027-09-05', to: '2027-09-07', note: 'telefon' }, headers: auth })));
+  a = await avail();
+  log(r.body.ok && r.body.days === 3 && ['2027-09-05', '2027-09-06', '2027-09-07'].every((d) => a.booked.includes(d)), 'admin closes 3 days');
+  r = await J(await book({ date: '2027-09-03', days: 3 }));
+  log(r.status === 409, 'guest cannot book over closed days', r.status);
+  r = await J(await adminB.onRequestGet(ctx('GET', '/api/admin/bookings', { headers: auth })));
+  log(r.body.bookings.some((b) => b.id === id1 && b.status === 'confirmed' && b.end_date === '2027-07-16') && r.body.blocks.length === 3, 'admin list shows paid rental and closed days');
+  r = await J(await adminB.onRequestPost(ctx('POST', '/api/admin/bookings', { body: { action: 'cancel', id: id1 }, headers: auth })));
+  a = await avail();
+  log(r.body.ok && !a.booked.includes('2027-07-12'), 'admin cancel frees the week');
+  r = await J(await adminK.onRequestDelete(ctx('DELETE', '/api/admin/blocks', { body: { from: '2027-09-05', to: '2027-09-07' }, headers: auth })));
+  a = await avail();
+  log(r.body.ok && !a.booked.includes('2027-09-06'), 'admin reopens the closed days');
+
+  // 13. iCal feed
+  r = await ics.onRequestGet(ctx('GET', '/api/calendar.ics?token=wrong'));
+  log(r.status === 404, 'calendar with wrong token → 404');
+  const id3 = sqlite.exec(`SELECT id FROM bookings WHERE date='2027-06-28'`)[0].values[0][0];
+  payload = JSON.stringify({ type: 'checkout.session.completed', data: { object: { client_reference_id: id3, payment_status: 'paid', payment_intent: 'pi_9' } } });
+  await webhook.onRequestPost(await signed(payload));
+  const icsText = await (await ics.onRequestGet(ctx('GET', '/api/calendar.ics?token=' + env.ICAL_TOKEN))).text();
+  log(icsText.includes('DTSTART;TZID=Europe/Zagreb:20270628T090000') && icsText.includes('DTEND;TZID=Europe/Zagreb:20270702T190000'), 'calendar feed spans pick-up 09:00 to return 19:00');
+
+  // 14. pricing sanity in the shared rules
+  const sameSeason = { low: '2027-05-01', mid: '2027-09-01', high: '2027-07-01' };
+  const noInversion = Object.values(sameSeason).every((d) => rulesMod.quote(rules, { date: d, days: 7 }).total > rulesMod.quote(rules, { date: d, days: 6 }).total);
+  log(noInversion, 'a week never costs less than six days in any season');
+  const taken = new Set(['2027-07-20']);
+  log(rulesMod.freeRun(rules, '2027-07-15', taken, '2027-12-31') === 5 && rulesMod.freeRun(rules, '2027-10-29', new Set(), '2027-12-31') === 3, 'free run stops at bookings and at season end');
+  log(rulesMod.daysLabel(21, 'hr') === '21 dan' && rulesMod.daysLabel(3, 'hr') === '3 dana' && rulesMod.daysLabel(7, 'en') === '7 days', 'day plurals');
+
+  // 15. fiscalized invoice through Solo after payment
+  const s1 = soloCalls[0];
+  log(!!s1 && s1.token === 'solo_test' && s1.tip_racuna === '4' && s1.nacin_placanja === '3' && s1.tip_kupca === '1' && s1.porez_stopa_1 === '13', 'paid booking → Solo invoice: advance type, card, B2C, 13 % VAT', JSON.stringify(s1 || {}).slice(0, 200));
+  log(s1 && s1.cijena_1 === '621,24' && s1.opis_usluge_1.startsWith('Predujam (30 %)') && s1.opis_usluge_1.includes('7 dana'), 'net 621,24 € + 13 % = exactly the 702,00 € charged; description names the advance', s1 && `${s1.cijena_1} | ${s1.opis_usluge_1}`);
+  const invRow = sqlite.exec(`SELECT invoice_number, invoice_pdf, invoice_error FROM bookings WHERE id = '${id1}'`)[0].values[0];
+  log(invRow[0] === '1-1-1' && invRow[1].includes('/download/r1') && invRow[2] === null, 'invoice number and PDF stored on the booking', invRow.join(' | '));
+  log(resendCalls[0].html.includes('solo.com.hr/download/r1') && resendCalls[1].html.includes('1-1-1'), 'guest e-mail links the invoice PDF; owner e-mail shows the number');
+  let misses = 0, checked = 0;
+  for (const vat of [13, 25, 5]) for (const start of ['2027-04-01', '2027-05-28', '2027-06-10', '2027-06-27', '2027-07-01', '2027-08-25', '2027-09-15', '2027-10-20']) for (let days = 3; days <= 21; days++) {
+    const q = rulesMod.quote({ ...rules, invoice: { vatRate: vat } }, { date: start, days }); if (!q) continue; checked++;
+    const n = invoiceMod.netForGross(q.payNowCents, vat); if (Math.round(n * (1 + vat / 100)) !== q.payNowCents || Math.abs(q.payNow - Math.round(q.total * 0.3)) > 3) misses++;
+  }
+  log(misses === 0 && checked > 300, 'every advance we charge has an exact net + VAT split (13 / 25 / 5 %), within 3 € of 30 %', ` quotes,  misses`);
+  // Solo failure is recorded and can be retried from admin
+  soloFail = true;
+  const idSolo = sqlite.exec(`SELECT id FROM bookings WHERE date='2027-07-17'`)[0].values[0][0];
+  payload = JSON.stringify({ type: 'checkout.session.completed', data: { object: { client_reference_id: idSolo, payment_status: 'paid', payment_intent: 'pi_7' } } });
+  await webhook.onRequestPost(await signed(payload));
+  await flush();
+  soloFail = false;
+  let err = sqlite.exec(`SELECT status, invoice_error FROM bookings WHERE id = '${idSolo}'`)[0].values[0];
+  log(err[0] === 'confirmed' && /Solo 125/.test(err[1]), 'Solo error keeps the booking confirmed and records the error', err.join(' | '));
+  r = await J(await adminB.onRequestPost(ctx('POST', '/api/admin/bookings', { body: { action: 'invoice', id: idSolo }, headers: auth })));
+  err = sqlite.exec(`SELECT invoice_number, invoice_error FROM bookings WHERE id = '${idSolo}'`)[0].values[0];
+  log(r.body.ok && err[0] && err[1] === null, 'admin "Izdaj račun" retries and stores the invoice', err.join(' | '));
+  r = await J(await adminB.onRequestPost(ctx('POST', '/api/admin/bookings', { body: { action: 'invoice', id: idSolo }, headers: auth })));
+  log(r.status === 409, 'no second invoice for the same payment', r.status);
+  let waited = 0;
+  window.fetch.__busy = 1;
+  const busyFetch = window.fetch;
+  window.fetch = async (u, o) => (String(u).startsWith('https://api.solo.com.hr/') && window.__busyOnce-- > 0 ? new Response(JSON.stringify({ status: 100, message: 'Pričekaj 10 s' })) : busyFetch(u, o));
+  window.__busyOnce = 1;
+  const inv = await invoiceMod.issueInvoice(env, { name: 'X', lang: 'hr', date: '2027-07-10', end_date: '2027-07-12', days: 3, paid_cents: 30000, total_cents: 100000 }, rules, { wait: async (ms) => { waited = ms; } });
+  window.fetch = busyFetch;
+  log(inv.number && waited >= 10000, 'Solo "wait 10 s" → waits and retries once', JSON.stringify(inv));
+
+  // 16. boat photos and details
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1, 1, 1, 0, 72]);
+  const up = async (bytes, headers = auth) => { const fd = new FormData(); fd.append('file', new Blob([bytes]), 'a.jpg'); fd.append('width', '1600'); fd.append('height', '1067'); fd.append('alt_hr', 'Krma'); return J(await adminP.onRequestPost({ env, waitUntil() {}, request: new Request('https://www.example.com/api/admin/photos', { method: 'POST', headers, body: fd }) })); };
+  r = await up(jpeg, { Authorization: 'Bearer nope' });
+  log(r.status === 401, 'photo upload without token → 401');
+  r = await up(new TextEncoder().encode('<html><body>not an image'));
+  log(r.status === 415, 'non-image upload → 415', r.status);
+  const a1 = await up(jpeg), a2 = await up(jpeg);
+  log(a1.body.ok && a2.body.ok && env.PHOTOS.m.size === 2, 'two JPEG photos stored in R2');
+  let boatRes = await J(await boatApi.onRequestGet(ctx('GET', '/api/boat')));
+  log(boatRes.body.photos.length === 2 && boatRes.body.photos[0].alt_hr === 'Krma' && boatRes.body.photos[0].width === 1600, 'public /api/boat lists photos with size and alt');
+  const fileRes = await photoFile.onRequestGet({ env, params: { name: `${a1.body.photo.id}.jpg` }, request: new Request('https://x/') });
+  log(fileRes.status === 200 && fileRes.headers.get('Content-Type') === 'image/jpeg' && /immutable/.test(fileRes.headers.get('Cache-Control')), 'photo served from R2 with long cache');
+  const bad = await photoFile.onRequestGet({ env, params: { name: '../secret.jpg' }, request: new Request('https://x/') });
+  log(bad.status === 404, 'odd file names → 404');
+  await adminP.onRequestPatch(ctx('PATCH', '/api/admin/photos', { body: { order: [a2.body.photo.id, a1.body.photo.id] }, headers: auth }));
+  await adminP.onRequestPatch(ctx('PATCH', '/api/admin/photos', { body: { id: a2.body.photo.id, alt_hr: 'Kabina', alt_en: 'Cabin' }, headers: auth }));
+  boatRes = await J(await boatApi.onRequestGet(ctx('GET', '/api/boat')));
+  log(boatRes.body.photos[0].id === a2.body.photo.id && boatRes.body.photos[0].alt_en === 'Cabin', 'reorder and alt text saved');
+  await adminP.onRequestDelete(ctx('DELETE', '/api/admin/photos', { body: { id: a1.body.photo.id }, headers: auth }));
+  boatRes = await J(await boatApi.onRequestGet(ctx('GET', '/api/boat')));
+  log(boatRes.body.photos.length === 1 && env.PHOTOS.m.size === 1, 'delete removes photo from list and R2');
+  r = await J(await adminBoat.onRequestPut(ctx('PUT', '/api/admin/boat', { body: { details: { model: 'Merry Fisher 795 S2', lengthM: '7,95', maxGuests: '8', features_hr: 'Tuš na krmi\n\nWC\n', year: '1800', hack: 'x' } }, headers: auth })));
+  boatRes = await J(await boatApi.onRequestGet(ctx('GET', '/api/boat')));
+  const det = boatRes.body.details;
+  log(det.model === 'Merry Fisher 795 S2' && det.lengthM === 7.95 && det.maxGuests === 8 && det.features_hr.length === 2 && det.year === null && !('hack' in det), 'boat details cleaned and saved (decimal comma, empty lines, bad year, unknown fields)', JSON.stringify(det));
+} catch (e) {
+  log(false, 'threw: ' + e.message, e.stack);
+}
+
+const bad = results.filter((r) => !r.ok);
+out.innerHTML = results.map((r) => `<span class="${r.ok ? 'ok' : 'bad'}">${r.ok ? '✓' : '✗'} ${r.name}</span>${r.ok ? '' : ' — ' + String(r.extra).replace(/</g, '&lt;')}`).join('\n') + `\n\n${results.length - bad.length}/${results.length} passed`;
+window.__results = { passed: results.length - bad.length, total: results.length, failed: bad };
+</script>

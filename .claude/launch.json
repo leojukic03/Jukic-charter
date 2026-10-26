@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/serve.ps1", "-Port", "8123"],
+      "port": 8123
+    },
+    {
+      "name": "site-mock-api",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/serve.ps1", "-Port", "8124", "-MockApi"],
+      "port": 8124
+    },
+    {
+      "name": "site-mac",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["tools/serve.py", "--port", "8123"],
+      "port": 8123
+    },
+    {
+      "name": "site-mac-mock-api",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["tools/serve.py", "--port", "8124", "--mock-api"],
+      "port": 8124
+    }
+  ]
+}

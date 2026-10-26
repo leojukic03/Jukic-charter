@@ -1,0 +1,4 @@
+{
+  "_napomena": "Koristi se samo kad server za rezervacije nije postavljen. Zauzeti dani (YYYY-MM-DD).",
+  "booked": ["2027-07-10", "2027-07-11", "2027-07-12", "2027-07-13", "2027-07-14", "2027-07-15", "2027-07-16"]
+}

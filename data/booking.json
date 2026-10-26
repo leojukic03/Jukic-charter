@@ -1,0 +1,31 @@
+{
+  "_napomena": "Jedini izvor cijena i pravila rezervacije. Čita ga i stranica i server (cijenu za plaćanje uvijek računa server). Cijene su prijedlog prema konkurenciji (listopad 2026) — PROVJERI.",
+  "currency": "EUR",
+  "productName": { "hr": "Jukić Charter · najam broda Merry Fisher 795 bez skipera", "en": "Jukić Charter · Merry Fisher 795 bareboat rental" },
+  "timezone": "Europe/Zagreb",
+  "maxGuests": 8,
+  "minDays": 3,
+  "maxDays": 21,
+  "weeklyFromDays": 7,
+  "checkIn": "09:00",
+  "checkOut": "19:00",
+  "minDaysAhead": 1,
+  "maxMonthsAhead": 14,
+  "holdMinutes": 30,
+  "payment": {
+    "mode": "advance",
+    "advancePercent": 30
+  },
+  "seasons": [
+    { "id": "low",  "label": { "hr": "Predsezona", "en": "Low season" },  "ranges": [["04-01", "05-31"], ["10-01", "10-31"]], "perDay": 190, "perWeek": 1150 },
+    { "id": "mid",  "label": { "hr": "Sezona", "en": "Mid season" },      "ranges": [["06-01", "06-30"], ["09-01", "09-30"]], "perDay": 260, "perWeek": 1600 },
+    { "id": "high", "label": { "hr": "Vrhunac", "en": "Peak season" },    "ranges": [["07-01", "08-31"]],                     "perDay": 360, "perWeek": 2250 }
+  ],
+  "invoice": {
+    "vatRate": 13,
+    "_napomena": "PDV na računu (Solo). 13 % vrijedi za najam plovila s noćenjem na plovilu, 25 % za najam bez smještaja; 0 ako nisi u sustavu PDV-a. Potvrdi s računovođom."
+  },
+  "cleaningFee": 90,
+  "deposit": 1000,
+  "fuelIncluded": false
+}

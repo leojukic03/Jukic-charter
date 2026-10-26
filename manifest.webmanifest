@@ -1,0 +1,16 @@
+{
+  "name": "Jukić Charter · vodič za goste",
+  "short_name": "Vodič",
+  "description": "Uvale, rute po moru, planer izleta i prognoza vjetra oko Biograda, Pašmana i Kornata.",
+  "lang": "hr",
+  "start_url": "vodic/",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#06324f",
+  "theme_color": "#06324f",
+  "icons": [
+    { "src": "img/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

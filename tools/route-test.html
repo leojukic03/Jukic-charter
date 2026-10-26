@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Route test</title>
+<body style="margin:0;background:#000">
+<canvas id="c"></canvas>
+<pre id="o" style="position:fixed;top:0;left:0;color:#0f0;margin:8px"></pre>
+<script src="../js/router.js"></script>
+<script>
+// Dev tool: draws the fine mask and a test route. Open /tools/route-test.html?a=lon,lat&b=lon,lat
+(async () => {
+  const q = new URLSearchParams(location.search);
+  const a = (q.get('a') || '15.4425,43.9395').split(',').map(Number);
+  const b = (q.get('b') || '15.2900,43.8700').split(',').map(Number);
+  const meta = await (await fetch('../data/mask-fine.json')).json();
+  const img = new Image(); img.src = '../data/mask-fine.png'; await img.decode();
+  const c = document.getElementById('c'); c.width = meta.cols; c.height = meta.rows;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+  const r = await SeaRouter.create('../');
+  const t0 = performance.now();
+  const res = await r.route([a, b]);
+  const ms = performance.now() - t0;
+  x.strokeStyle = '#e00'; x.lineWidth = 3; x.beginPath();
+  for (const leg of res.legs) leg.coords.forEach(([lon, lat], i) => {
+    const px = (lon - meta.west) / meta.dLon, py = (meta.north - lat) / meta.dLat;
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  });
+  x.stroke();
+  window.__res = res;
+  document.getElementById('o').textContent = `nm=${res.nm.toFixed(2)} ms=${ms.toFixed(0)} pts=${res.legs[0].coords.length} approx=${res.legs[0].approx}`;
+})();
+</script>

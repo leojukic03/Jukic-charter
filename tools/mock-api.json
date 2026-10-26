@@ -1,0 +1,103 @@
+{
+    "availability":  {
+                         "booked":  [
+                                        "2026-10-28",
+                                        "2026-10-29",
+                                        "2026-10-30"
+                                    ],
+                         "minDays":  3
+                     },
+    "checkout":  {
+                     "url":  "/?booking=success\u0026session_id=cs_test_mock#rezervacija",
+                     "id":  "00000000-0000-0000-0000-000000000000"
+                 },
+    "booking":  {
+                    "status":  "confirmed",
+                    "date":  "2027-07-10",
+                    "end_date":  "2027-07-16",
+                    "days":  7,
+                    "guests":  4,
+                    "total_cents":  234000,
+                    "paid_cents":  70200,
+                    "currency":  "EUR"
+                },
+    "release":  {
+                    "status":  "expired"
+                },
+    "boat":  {
+                 "details":  {
+                                 "model":  "Merry Fisher 795 Series 2",
+                                 "year":  2023,
+                                 "lengthM":  7.95,
+                                 "beamM":  2.99,
+                                 "engine":  "Yamaha F200",
+                                 "maxGuests":  8,
+                                 "berths":  4,
+                                 "fuelTankL":  200,
+                                 "waterTankL":  80,
+                                 "description_hr":  "Kabina s dva ležaja, WC i tuš. Bimini tenda za hlad na krmi.",
+                                 "features_hr":  [
+                                                     "Bimini tenda",
+                                                     "Tuš na krmi",
+                                                     "Hladnjak",
+                                                     "Ljestve za kupanje"
+                                                 ],
+                                 "features_en":  [
+                                                     "Bimini top",
+                                                     "Deck shower",
+                                                     "Fridge",
+                                                     "Swim ladder"
+                                                 ]
+                             },
+                 "photos":  [
+                                {
+                                    "id":  "a",
+                                    "url":  "/img/og.png",
+                                    "width":  1200,
+                                    "height":  630,
+                                    "alt_hr":  "Probna slika 1"
+                                },
+                                {
+                                    "id":  "b",
+                                    "url":  "/img/hero-land.png",
+                                    "width":  1685,
+                                    "height":  1558,
+                                    "alt_hr":  "Probna slika 2"
+                                }
+                            ]
+             },
+    "admin/blocks":  {
+                         "ok":  true
+                     },
+    "admin/bookings":  {
+                           "bookings":  [
+                                            {
+                                                "id":  "b1",
+                                                "date":  "2027-07-10",
+                                                "end_date":  "2027-07-16",
+                                                "days":  7,
+                                                "guests":  8,
+                                                "license":  1,
+                                                "name":  "Aleksandra Wiśniewska-Kowalczyk",
+                                                "email":  "aleksandra.wisniewska-kowalczyk@northwind-industries-holdings.example.com",
+                                                "phone":  "+48 601 234 567",
+                                                "note":  "Dolazimo autom oko 8:30.",
+                                                "total_cents":  234000,
+                                                "paid_cents":  70200,
+                                                "currency":  "EUR",
+                                                "status":  "confirmed",
+                                                "stripe_payment":  "pi_123"
+                                            }
+                                        ],
+                           "blocks":  [
+                                          {
+                                              "date":  "2027-07-20",
+                                              "note":  "servis"
+                                          },
+                                          {
+                                              "date":  "2027-07-21",
+                                              "note":  "servis"
+                                          }
+                                      ]
+                       }
+}

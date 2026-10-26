@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Map test</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<div id="m" style="position:fixed;inset:0"></div>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+// Dev tool: bare MapLibre + OpenFreeMap, to isolate base-map problems from the guide.
+window.m = new maplibregl.Map({ container: 'm', style: 'https://tiles.openfreemap.org/styles/liberty', center: [15.36, 43.9], zoom: 9.6 });
+m.on('error', (e) => console.warn('map error', e.error && e.error.message));
+</script>

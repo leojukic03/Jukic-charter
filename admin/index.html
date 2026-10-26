@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Jukić Charter · admin</title>
+<link rel="icon" href="../img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../css/fonts.css">
+<style>
+  :root { --sea-deep: #06324f; --sea: #0a5c8a; --karst: #edefe8; --karst-2: #e1e4db; --stone: #c3c8bd; --ink: #0b1b26; --ink-2: #44545e; --signal: #f2b705; --white: #fbfcf9; --ok: #1f8a5b; --warn: #b07400; --danger: #c9361f; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font: 400 1rem/1.45 'Archivo', system-ui, sans-serif; color: var(--ink); background: var(--karst); }
+  main { max-width: 760px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(40px + env(safe-area-inset-bottom, 0px)); }
+  h1 { font-stretch: 112%; font-weight: 800; font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.0625rem; margin: 32px 0 10px; }
+  .muted { color: var(--ink-2); font-size: 0.875rem; }
+  .card { background: var(--white); border-radius: 14px; padding: 14px; box-shadow: 0 1px 0 rgb(11 27 38 / 0.06); }
+  input, select, textarea, button { font: inherit; font-size: 16px; color: inherit; }
+  input, select, textarea { min-height: 46px; padding: 0 10px; border: 1.5px solid var(--stone); border-radius: 12px; background: var(--white); width: 100%; }
+  textarea { padding: 10px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--sea); box-shadow: 0 0 0 3px rgb(10 92 138 / 0.15); }
+  label { display: grid; gap: 4px; font-size: 0.8125rem; font-weight: 700; color: var(--ink-2); }
+  .btn { min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--sea-deep); color: var(--white); font-weight: 700; cursor: pointer; touch-action: manipulation; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1); display: inline-grid; place-items: center; text-decoration: none; }
+  .btn:active { transform: scale(0.97); }
+  .btn[disabled] { opacity: 0.5; }
+  .btn--light { background: var(--karst-2); color: var(--ink); }
+  .btn--danger { background: none; color: var(--danger); box-shadow: inset 0 0 0 1.5px currentColor; }
+  .btn--icon { width: 44px; padding: 0; }
+  .grid { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+  .grid .wide { grid-column: 1 / -1; }
+  .row--3 { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+  @media (min-width: 640px) { .row--3 { grid-template-columns: 1fr 1fr 1.6fr auto; align-items: end; } .grid { grid-template-columns: repeat(3, 1fr); } }
+  .bk { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--white); margin-bottom: 8px; }
+  .bk__top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .bk__name { font-weight: 800; overflow-wrap: anywhere; }
+  .bk__money { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bk a:not(.btn) { color: var(--sea); font-weight: 600; overflow-wrap: anywhere; }
+  .bk__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.02em; background: var(--karst-2); }
+  .tag--confirmed { background: #d9f0e4; color: #0f5236; }
+  .tag--pending { background: #fdf0d2; color: #6b4600; }
+  .tag--cancelled, .tag--err { background: #fbe1dc; color: #6f1b0f; }
+  .tag--block { background: var(--sea-deep); color: var(--white); }
+  .err { color: var(--danger); font-weight: 600; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .empty { padding: 18px; text-align: center; color: var(--ink-2); background: var(--white); border-radius: 14px; }
+  code { font-size: 0.8125rem; background: var(--karst-2); padding: 2px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+  .drop { display: grid; place-items: center; gap: 6px; padding: 22px 14px; border: 2px dashed var(--stone); border-radius: 14px; background: var(--white); text-align: center; cursor: pointer; }
+  .drop[data-over] { border-color: var(--sea); background: #e8f3f6; }
+  .drop input { display: none; }
+  .photos { display: grid; gap: 10px; margin-top: 10px; }
+  .ph { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 10px; border-radius: 14px; background: var(--white); align-items: start; }
+  .ph img { width: 96px; height: 72px; object-fit: cover; border-radius: 10px; background: var(--karst-2); }
+  .ph__fields { display: grid; gap: 6px; min-width: 0; }
+  .ph__fields input { min-height: 40px; }
+  .ph__actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ph__first { font-size: 0.75rem; font-weight: 800; color: var(--sea); }
+  .progress { font-size: 0.875rem; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Jukić Charter · admin</h1>
+  <p class="muted">Najmovi, računi, zatvoreni dani, fotografije i podaci o brodu.</p>
+
+  <form id="login" class="card" hidden>
+    <label>Admin ključ (ADMIN_TOKEN)<input name="token" type="password" autocomplete="current-password" required></label>
+    <label style="display:flex;gap:8px;align-items:center;margin:10px 0;font-weight:600"><input type="checkbox" name="remember" style="width:20px;height:20px;min-height:0">Zapamti na ovom uređaju</label>
+    <button class="btn" type="submit">Prijava</button>
+    <p class="err" id="loginErr" hidden></p>
+  </form>
+
+  <div id="app" hidden>
+    <h2>Nadolazeći najmovi</h2>
+    <div id="list" aria-live="polite"></div>
+
+    <h2>Zatvori dane</h2>
+    <form id="blockForm" class="card">
+      <div class="row--3">
+        <label>Od<input name="from" type="date" required></label>
+        <label>Do (uključivo)<input name="to" type="date"></label>
+        <label>Napomena<input name="note" maxlength="200" placeholder="npr. telefonska rezervacija, servis"></label>
+        <button class="btn" type="submit">Zatvori</button>
+      </div>
+      <p class="err" id="blockErr" hidden></p>
+    </form>
+
+    <h2>Fotografije broda</h2>
+    <p class="muted">Prva fotografija je naslovna na stranici. Fotografije se prije slanja smanje na najviše 2000 px. Opis (alt) čitaju čitači ekrana i tražilice.</p>
+    <label class="drop" id="drop">
+      <input type="file" id="files" accept="image/jpeg,image/png,image/webp,image/heic" multiple>
+      <strong>Dodaj fotografije</strong>
+      <span class="muted">Tapni ili povuci ovdje · JPG, PNG, WebP</span>
+    </label>
+    <p class="progress" id="progress" aria-live="polite"></p>
+    <div class="photos" id="photos"></div>
+
+    <h2>Podaci o brodu</h2>
+    <form id="boatForm" class="card">
+      <div class="grid">
+        <label class="wide">Model<input name="model" maxlength="80"></label>
+        <label>Godina<input name="year" inputmode="numeric"></label>
+        <label>Duljina (m)<input name="lengthM" inputmode="decimal"></label>
+        <label>Širina (m)<input name="beamM" inputmode="decimal"></label>
+        <label class="wide">Motor<input name="engine" maxlength="80" placeholder="npr. Yamaha F200"></label>
+        <label>Najviše osoba<input name="maxGuests" inputmode="numeric"></label>
+        <label>Ležajevi<input name="berths" inputmode="numeric"></label>
+        <label>Gorivo (L)<input name="fuelTankL" inputmode="numeric"></label>
+        <label>Voda (L)<input name="waterTankL" inputmode="numeric"></label>
+        <label class="wide">Opis (HR)<textarea name="description_hr" rows="3" maxlength="1200"></textarea></label>
+        <label class="wide">Opis (EN)<textarea name="description_en" rows="3" maxlength="1200"></textarea></label>
+        <label class="wide">Oprema (HR), jedna stavka po retku<textarea name="features_hr" rows="5"></textarea></label>
+        <label class="wide">Oprema (EN), jedna stavka po retku<textarea name="features_en" rows="5"></textarea></label>
+      </div>
+      <p style="display:flex;gap:10px;align-items:center;margin:12px 0 0"><button class="btn" type="submit">Spremi</button><span id="boatMsg" aria-live="polite"></span></p>
+    </form>
+
+    <h2>Kalendar na mobitelu</h2>
+    <p class="muted">Pretplati se u Google ili Apple kalendaru na adresu (umjesto TOKEN upiši ICAL_TOKEN):<br><code id="ical"></code></p>
+    <p><button class="btn btn--light" type="button" id="logout">Odjava</button></p>
+  </div>
+</main>
+<script src="../js/config.js"></script>
+<script type="module">
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = { get() { try { return sessionStorage.getItem('adm') || localStorage.getItem('adm'); } catch { return null; } },
+    set(t, remember) { try { (remember ? localStorage : sessionStorage).setItem('adm', t); } catch {} },
+    clear() { try { sessionStorage.removeItem('adm'); localStorage.removeItem('adm'); } catch {} } };
+  let token = store.get();
+  const api = async (path, opts = {}) => {
+    const headers = { Authorization: 'Bearer ' + token };
+    if (!(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+    const r = await fetch('../api/admin/' + path, { ...opts, headers });
+    if (r.status === 401) { store.clear(); token = null; show(); throw new Error('unauthorized'); }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  };
+
+  /* ---------- Bookings ---------- */
+  const STATUS = { confirmed: 'plaćeno', pending: 'čeka plaćanje', cancelled: 'otkazano' };
+  const money = (c, cur) => new Intl.NumberFormat('hr-HR', { style: 'currency', currency: cur || 'EUR' }).format(c / 100);
+  const fmt = (iso) => new Date(iso + 'T12:00:00Z').toLocaleDateString('hr-HR', { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const next = (iso) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); };
+  const dani = (n) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'dan' : 'dana'}`;
+  const invoiceLine = (b) => {
+    if (b.status !== 'confirmed') return '';
+    if (b.invoice_number) return `<span>Račun <b>${esc(b.invoice_number)}</b>${b.invoice_pdf ? ` · <a href="${esc(b.invoice_pdf)}" target="_blank" rel="noopener">PDF</a>` : ''}</span>`;
+    return `<span><span class="tag tag--err">račun nije izdan</span> ${esc(b.invoice_error || '')}</span>`;
+  };
+
+  async function loadBookings() {
+    const { bookings, blocks } = await api('bookings');
+    const ranges = [];
+    for (const k of blocks) {
+      const last = ranges[ranges.length - 1];
+      if (last && next(last.to) === k.date && (last.note || '') === (k.note || '')) last.to = k.date;
+      else ranges.push({ from: k.date, to: k.date, note: k.note });
+    }
+    const items = [...bookings.map((b) => ({ kind: 'b', date: b.date, b })), ...ranges.map((k) => ({ kind: 'k', date: k.from, k }))]
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (!items.length) { $('#list').innerHTML = '<p class="empty">Nema nadolazećih najmova ni zatvorenih dana.</p>'; return; }
+    $('#list').innerHTML = items.map((i) => i.kind === 'k'
+      ? `<div class="bk"><div class="bk__top"><span><span class="tag tag--block">zatvoreno</span> ${esc(fmt(i.k.from))}${i.k.to !== i.k.from ? ` – ${esc(fmt(i.k.to))}` : ''}</span></div>${i.k.note ? `<span class="muted">${esc(i.k.note)}</span>` : ''}<div class="bk__actions"><button class="btn btn--light" data-unblock="${i.k.from}|${i.k.to}">Otvori ponovno</button></div></div>`
+      : `<div class="bk"><div class="bk__top"><span class="bk__name">${esc(i.b.name)}</span><span class="bk__money">${money(i.b.paid_cents, i.b.currency)}${i.b.total_cents > i.b.paid_cents ? ` / ${money(i.b.total_cents, i.b.currency)}` : ''}</span></div>
+          <span><span class="tag tag--${i.b.status}">${STATUS[i.b.status] || i.b.status}</span> <b>${esc(fmt(i.b.date))} – ${esc(fmt(i.b.end_date))}</b> · ${dani(i.b.days)} · ${i.b.guests} os.</span>
+          ${i.b.status === 'confirmed' && i.b.total_cents > i.b.paid_cents ? `<span>Naplatiti i fakturirati pri preuzimanju: <b>${money(i.b.total_cents - i.b.paid_cents, i.b.currency)}</b></span>` : ''}
+          ${invoiceLine(i.b)}
+          <span>${i.b.phone ? `<a href="tel:${esc(i.b.phone.replace(/\s/g, ''))}">${esc(i.b.phone)}</a> · ` : ''}<a href="mailto:${esc(i.b.email)}">${esc(i.b.email)}</a></span>
+          ${i.b.note ? `<span class="muted">${esc(i.b.note)}</span>` : ''}
+          <div class="bk__actions">${i.b.status === 'confirmed' && !i.b.invoice_number ? `<button class="btn" data-invoice="${esc(i.b.id)}">Izdaj račun</button>` : ''}${i.b.stripe_payment ? `<a class="btn btn--light" href="https://dashboard.stripe.com/payments/${esc(i.b.stripe_payment)}" target="_blank" rel="noopener">U Stripeu</a>` : ''}${i.b.status === 'confirmed' ? `<button class="btn btn--danger" data-cancel="${esc(i.b.id)}">Otkaži</button>` : ''}</div></div>`).join('');
+  }
+  $('#list').addEventListener('click', async (e) => {
+    const c = e.target.closest('[data-cancel]');
+    if (c && confirm('Otkazati najam? Dani se oslobađaju. Povrat novca i storno računa napravi u Stripeu i Solu.')) { await api('bookings', { method: 'POST', body: JSON.stringify({ action: 'cancel', id: c.dataset.cancel }) }); loadBookings(); }
+    const u = e.target.closest('[data-unblock]');
+    if (u) { const [from, to] = u.dataset.unblock.split('|'); await api('blocks', { method: 'DELETE', body: JSON.stringify({ from, to }) }); loadBookings(); }
+    const inv = e.target.closest('[data-invoice]');
+    if (inv) {
+      inv.disabled = true; inv.textContent = 'Izdajem…';
+      try { const r = await api('bookings', { method: 'POST', body: JSON.stringify({ action: 'invoice', id: inv.dataset.invoice }) }); if (!r.ok) alert('Račun nije izdan: ' + (r.invoice && r.invoice.error)); }
+      catch (err) { alert('Račun nije izdan: ' + err.message); }
+      loadBookings();
+    }
+  });
+  $('#blockForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); const f = e.target;
+    try { await api('blocks', { method: 'POST', body: JSON.stringify({ from: f.from.value, to: f.to.value || f.from.value, note: f.note.value }) }); f.reset(); $('#blockErr').hidden = true; loadBookings(); }
+    catch (err) { $('#blockErr').textContent = 'Dani nisu zatvoreni: ' + err.message; $('#blockErr').hidden = false; }
+  });
+
+  /* ---------- Photos ---------- */
+  let photos = [];
+  async function loadPhotos() {
+    const r = await fetch('../api/boat', { cache: 'no-store' }).then((x) => x.json()).catch(() => ({ photos: [] }));
+    photos = r.photos || [];
+    renderPhotos();
+  }
+  function renderPhotos() {
+    $('#photos').innerHTML = photos.length ? photos.map((p, i) => `<div class="ph" data-id="${p.id}">
+        <img src="..${esc(p.url)}" alt="" loading="lazy">
+        <div class="ph__fields">
+          ${i === 0 ? '<span class="ph__first">Naslovna</span>' : ''}
+          <input data-alt="hr" value="${esc(p.alt_hr || '')}" placeholder="Opis (HR), npr. Krma s ljestvama za kupanje" maxlength="160">
+          <input data-alt="en" value="${esc(p.alt_en || '')}" placeholder="Description (EN)" maxlength="160">
+          <div class="ph__actions">
+            <button class="btn btn--light btn--icon" data-move="-1" ${i === 0 ? 'disabled' : ''} aria-label="Pomakni gore">↑</button>
+            <button class="btn btn--light btn--icon" data-move="1" ${i === photos.length - 1 ? 'disabled' : ''} aria-label="Pomakni dolje">↓</button>
+            <button class="btn btn--danger" data-del>Obriši</button>
+          </div>
+        </div></div>`).join('') : '<p class="empty">Još nema fotografija. Dok ih ne dodaš, stranica prikazuje ilustraciju broda.</p>';
+  }
+  // Resize in the browser so uploads are fast on a phone connection and files stay small.
+  async function shrink(file) {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
+    if (!bmp) return { blob: file, width: null, height: null };
+    const scale = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.85));
+    return { blob, width: w, height: h };
+  }
+  async function upload(files) {
+    const list = [...files].filter((f) => /^image\//.test(f.type) || /\.(heic|jpe?g|png|webp)$/i.test(f.name));
+    for (let i = 0; i < list.length; i++) {
+      $('#progress').textContent = `Šaljem ${i + 1} od ${list.length}…`;
+      try {
+        const { blob, width, height } = await shrink(list[i]);
+        const fd = new FormData();
+        fd.append('file', blob, 'photo.jpg'); if (width) { fd.append('width', width); fd.append('height', height); }
+        await api('photos', { method: 'POST', body: fd });
+      } catch (err) { $('#progress').innerHTML = `<span class="err">${esc(list[i].name)} nije poslana: ${esc(err.message)}</span>`; return loadPhotos(); }
+    }
+    $('#progress').innerHTML = `<span class="ok">Dodano: ${list.length}.</span>`;
+    loadPhotos();
+  }
+  $('#files').addEventListener('change', (e) => { upload(e.target.files); e.target.value = ''; });
+  const drop = $('#drop');
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.setAttribute('data-over', ''); });
+  drop.addEventListener('dragleave', () => drop.removeAttribute('data-over'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.removeAttribute('data-over'); upload(e.dataTransfer.files); });
+  $('#photos').addEventListener('click', async (e) => {
+    const row = e.target.closest('.ph'); if (!row) return;
+    const id = row.dataset.id, i = photos.findIndex((p) => p.id === id);
+    const mv = e.target.closest('[data-move]');
+    if (mv) {
+      const j = i + +mv.dataset.move; if (j < 0 || j >= photos.length) return;
+      [photos[i], photos[j]] = [photos[j], photos[i]]; renderPhotos();
+      await api('photos', { method: 'PATCH', body: JSON.stringify({ order: photos.map((p) => p.id) }) });
+    }
+    if (e.target.closest('[data-del]') && confirm('Obrisati fotografiju?')) { await api('photos', { method: 'DELETE', body: JSON.stringify({ id }) }); loadPhotos(); }
+  });
+  $('#photos').addEventListener('change', async (e) => {
+    const row = e.target.closest('.ph'); if (!row || !e.target.dataset.alt) return;
+    const alt_hr = row.querySelector('[data-alt="hr"]').value, alt_en = row.querySelector('[data-alt="en"]').value;
+    await api('photos', { method: 'PATCH', body: JSON.stringify({ id: row.dataset.id, alt_hr, alt_en }) });
+  });
+
+  /* ---------- Boat details ---------- */
+  const FIELDS = ['model', 'year', 'lengthM', 'beamM', 'engine', 'maxGuests', 'berths', 'fuelTankL', 'waterTankL', 'description_hr', 'description_en'];
+  async function loadBoat() {
+    const { details } = await api('boat');
+    const C = window.CHARTER || { boat: {} };
+    // First time: start from what the website shows today.
+    const d = details || { model: C.boat.model, lengthM: C.boat.lengthM, engine: C.boat.engine, maxGuests: C.boat.maxGuests, fuelTankL: C.boat.fuelTankL, features_hr: C.boat.features };
+    const f = $('#boatForm');
+    FIELDS.forEach((k) => (f[k].value = d[k] ?? ''));
+    f.features_hr.value = (d.features_hr || []).join('\n');
+    f.features_en.value = (d.features_en || []).join('\n');
+  }
+  $('#boatForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); const f = e.target;
+    const details = Object.fromEntries(FIELDS.map((k) => [k, f[k].value]));
+    details.features_hr = f.features_hr.value; details.features_en = f.features_en.value;
+    try { await api('boat', { method: 'PUT', body: JSON.stringify({ details }) }); $('#boatMsg').innerHTML = '<span class="ok">Spremljeno. Stranica prikazuje nove podatke.</span>'; }
+    catch (err) { $('#boatMsg').innerHTML = `<span class="err">Nije spremljeno: ${esc(err.message)}</span>`; }
+  });
+
+  /* ---------- Session ---------- */
+  function show() {
+    $('#login').hidden = !!token; $('#app').hidden = !token;
+    if (!token) return;
+    $('#ical').textContent = `${location.origin}/api/calendar.ics?token=TOKEN`;
+    loadBookings().catch((e) => { if (e.message !== 'unauthorized') $('#list').innerHTML = `<p class="err">Ne mogu učitati najmove (${esc(e.message)}).</p>`; });
+    loadPhotos(); loadBoat().catch(() => {});
+  }
+  $('#login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    token = e.target.token.value.trim();
+    try { await api('bookings'); store.set(token, e.target.remember.checked); $('#loginErr').hidden = true; show(); }
+    catch { $('#loginErr').textContent = 'Ključ nije ispravan ili server nije postavljen.'; $('#loginErr').hidden = false; token = null; show(); }
+  });
+  $('#logout').addEventListener('click', () => { store.clear(); token = null; show(); });
+  show();
+</script>
+</body>
+</html>
